@@ -44,7 +44,8 @@ function DipoPid { foreach ($l in (Adb shell ps)) { if ($l -match 'com\.daudio\.
 $old = DipoPid
 Write-Host "지금 DiPO PID: $old"
 if ($old) {
-    Adb shell "nemesis root -c 'kill $old'" | Out-Null
+    # DiPO runs as system (uid 1000); NEMESIS's uid 0 here may lack the right to signal it
+    Adb shell "nemesis root 1000 -c 'kill $old'"
     $new = $null
     for ($i = 0; $i -lt 30; $i++) { Start-Sleep -Seconds 1; $new = DipoPid; if ($new -and $new -ne $old) { break } }
     if ($new -and $new -ne $old) { Write-Host "DiPO 다시 시작됨: PID $new" -ForegroundColor Green }
