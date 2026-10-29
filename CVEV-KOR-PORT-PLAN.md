@@ -150,4 +150,5 @@
 
 - 작업 브랜치: `cvev-kor-wireless-carplay` (포크)
 - 단계: 계획 수립 완료, 포팅 입력 준비 대기 중
+- 포팅 도구 준비와 기준 자료 없이 할 수 있는 점검: `CVEV-KOR-PORT-SETUP.md`
 - upstream 공유: 사용자가 완벽하다고 판단할 때까지 보류
