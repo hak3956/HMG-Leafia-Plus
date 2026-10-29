@@ -327,6 +327,8 @@ def only_ours(a, K, B, P, names, changed, added, ck):
         for op in picked[c]:
             pair(raw[op[3]:op[4]], diffs[c][1][op[3]:op[4]])
     check_calls(K, P, pairs)
+    if a.replace:
+        apply_hooks(a.replace, a.out, manual)
     checks(a, K, manual)
 
 def body(root, ref):
@@ -365,6 +367,53 @@ def check_calls(K, P, pairs):
     print('calls from our code into this app: %d same code as in the part build, %d to check' % (same, len(other)))
     for ref, raw, why in other:
         print('  CHECK %s%s: %s' % (ref, '' if raw == ref else ' (part build: %s)' % raw.split('->', 1)[1], why))
+
+def read_hook(path):
+    """a .hook file: 'class:' the class, 'after:' one line of it (with {*} for any register
+    list), then 'insert:' and the lines to put right after it; $1 in them is the first
+    register of the matched line. Lines starting with # are comments."""
+    hook, body, cur = {}, [], None
+    for l in open(path, encoding='utf-8').read().split('\n'):
+        if l.startswith('#') or (cur != 'insert' and not l.strip()):
+            continue
+        if cur == 'insert':
+            if l.strip():
+                body.append(l.strip())
+            continue
+        k, _, v = l.partition(':')
+        if k in ('class', 'after') and v.strip():
+            hook[k] = v.strip()
+        elif k == 'insert':
+            cur = 'insert'
+        else:
+            sys.exit('%s: unknown line %r' % (path, l))
+    if 'class' not in hook or 'after' not in hook or not body:
+        sys.exit('%s: needs class:, after: and insert:' % path)
+    return hook['class'], hook['after'], body
+
+def apply_hooks(folder, out, manual):
+    """our own hooks (<name>.hook, see read_hook): put after a line of this car's stock
+    class that must occur there exactly once"""
+    for dp, _, fs in os.walk(folder):
+        for f in sorted(fs):
+            if not f.endswith('.hook'):
+                continue
+            cls, after, body = read_hook(os.path.join(dp, f))
+            c = cls[1:-1] + '.smali'
+            path = os.path.join(out, c)
+            if not os.path.exists(path):
+                manual.append(c); print('  BY HAND hook %s: no class %s' % (f, cls)); continue
+            lines = open(path, encoding='utf-8').read().rstrip('\n').split('\n')
+            pat = re.compile('^' + re.escape(after).replace(re.escape('{*}'), r'\{([^}]*)\}') + '$')
+            hits = [i for i, l in enumerate(lines) if pat.match(l.strip())]
+            if len(hits) != 1:
+                manual.append(c); print('  BY HAND hook %s: the line occurs %d times in %s (want 1)' % (f, len(hits), cls)); continue
+            m = pat.match(lines[hits[0]].strip())
+            reg = (m.group(1).split(',')[0].strip() if m.groups() else '')
+            ins = [l.replace('$1', reg) for l in body]
+            lines[hits[0] + 1:hits[0] + 1] = ins
+            open(path, 'w', encoding='utf-8').write('\n'.join(lines) + '\n')
+            print('  hooked  %s: %d lines after %s (register %s)' % (cls[1:-1], len(ins), after.split(',')[-1].strip()[:60], reg or '-'))
 
 def checks(a, K, manual):
     new_bad = sorted(unresolved(a.out) - unresolved(K))

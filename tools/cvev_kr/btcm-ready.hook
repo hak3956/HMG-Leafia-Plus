@@ -1,0 +1,13 @@
+# Leafia CarPlay bridge: start the Bluetooth side when DiPO's BT manager is ready.
+# The bridge build rebuilt from the Korean EV6 files lost this hook (it sat in the class that
+# answers HfDeviceBTCMManager.getLocalBTCMService, next to DiPO registering its own status
+# listener). Bridge.onBtcmReady registers BtListener on the same manager and, when an iPhone
+# is already connected over HFP, schedules the SPP connection. $1 = the manager register.
+class: Lcom/daudio/app/dipo/f/a;
+after: invoke-virtual {*}, Lcom/broadcom/bt/hfdevice/hfbtcm/HfDeviceBTCMManager;->registerHfDeviceStatusListener(Lcom/broadcom/bt/hfdevice/hfbtcm/HfDeviceStatusListener;)V
+insert:
+:lfb_try_start
+invoke-static {$1}, Lcom/ev6/cpwl/Bridge;->onBtcmReady(Lcom/broadcom/bt/hfdevice/hfbtcm/HfDeviceBTCMManager;)V
+:lfb_try_end
+.catchall {:lfb_try_start .. :lfb_try_end} :lfb_catchall
+:lfb_catchall
