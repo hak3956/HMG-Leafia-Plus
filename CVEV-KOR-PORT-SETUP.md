@@ -116,7 +116,7 @@ md5sum $K/new-stock/app/* $K/new-stock/lib/*
 ls $K/new-fw/framework | wc -l
 ```
 
-**(3) 클러스터 API**: 턴바이턴 파트가 설치 때 확인하는 11개 호출이 다 있는지. 하나라도 `없음` 이면 전체 모드가 되지 않으므로 포팅 전에 알아야 합니다.
+**(3) 클러스터 API** (2026-10-29 확인: 11개 모두 있음, PowerShell 로 `automotive.odex` 에서 문자열 확인 = 설치 프로그램의 `check_cluster_api` 와 같은 방식): 턴바이턴 파트가 설치 때 확인하는 11개 호출이 다 있는지. 하나라도 `없음` 이면 전체 모드가 되지 않으므로 포팅 전에 알아야 합니다.
 
 ```bash
 for m in updateTBTInfo updateTBTSubInfo updateTBTSubInfo2C updateTBTTrapInfo updateTPTurnList updateTPTurnListNew updateTPCrossroadName updateTPFlexibleDestinationName updateLaneInfo updateOperationStatus responseNaviAliveStatus; do grep -q "$m" $K/new-fw/framework/automotive.odex && echo "있음 $m" || echo "없음 $m"; done
@@ -152,5 +152,5 @@ cd ~/HMG-Leafia-Plus && export PATH=$HOME/.local/bin:$PATH && ~/leafia-venv/bin/
 ## 상태
 
 - 클라우드 작업 환경: lpatch·Python 패키지·port.py 흐름 확인 끝. baksmali/smali 는 사용자 PC 에서 확인할 차례.
-- 사용자 PC: 4절 준비 → 5절 점검 → 결과 공유.
+- 사용자 PC: 5절 (3) 클러스터 API 11개 모두 있음 (2026-10-29). 4절 준비 → 5절 나머지 점검 → 결과 공유.
 - 남은 차단 요인: 기준 자료(ref-stock, ref-fw, ref-builds)와 국내 EV6 용 libautoreceiver 빌드. 모의 시험용 키트(port) 수집.
