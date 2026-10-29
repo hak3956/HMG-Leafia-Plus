@@ -63,10 +63,18 @@ def translate(lines, names, cls):
         out.append(l)
     return out
 
-def merge(e, t, k):
-    """apply the change e -> t to k; None when a change's context differs on k"""
-    if e == k:
-        return t
+def changes(e, t):
+    return [op for op in difflib.SequenceMatcher(None, e, t, autojunk=False).get_opcodes() if op[0] != 'equal']
+
+def merge(e, t, k, ops=None):
+    """apply the change e -> t (or only the given changes of it) to k; None when a
+    change's context differs on k"""
+    if ops is None:
+        if e == k:
+            return t
+        ops = changes(e, t)
+    if not ops:
+        return list(k)
     if not e:
         return None
     ek = {}
@@ -74,9 +82,7 @@ def merge(e, t, k):
         for x in range(n):
             ek[i + x] = j + x
     res, edits = list(k), []
-    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, e, t, autojunk=False).get_opcodes():
-        if tag == 'equal':
-            continue
+    for tag, i1, i2, j1, j2 in ops:
         lo, hi = max(0, i1 - CTX), min(len(e), i2 + CTX)
         span = [ek.get(x) for x in range(lo, hi)]
         if not span or None in span or any(b - a != 1 for a, b in zip(span, span[1:])):
@@ -118,6 +124,101 @@ def hunks(e, t):
         out.append('-%d +%d %s%s%s' % (len(old), len(new), kind, ours, (': ' + '; '.join(refs[:4]) + (' ...' if len(refs) > 4 else '')) if refs else ''))
     return out
 
+def refs_in(lines):
+    return {'%s->%s%s' % r for l in lines for r in REF.findall(l)}
+
+def decls_in(lines, cls):
+    out = set()
+    for l in lines:
+        m = FIELD_DECL.match(l) or METHOD_DECL.match(l)
+        if m:
+            out.add('%s->%s%s' % (cls, m.group(2), m.group(3)))
+    return out
+
+def pick_ours(diffs, new_refs):
+    """{class: [changes]}: the changes that mention our code, plus those that declare a
+    member our code (or another picked change) uses, until nothing more is needed"""
+    picked = {c: [op for op in ops if any(OURS.search(l) for l in t[op[3]:op[4]])] for c, (e, t, cls, ops) in diffs.items()}
+    while True:
+        want = set(new_refs)
+        for c, ops in picked.items():
+            t = diffs[c][1]
+            for op in ops:
+                want |= refs_in(t[op[3]:op[4]])
+        grew = False
+        for c, (e, t, cls, ops) in diffs.items():
+            for op in ops:
+                if op not in picked[c] and decls_in(t[op[3]:op[4]], cls) & want:
+                    picked[c].append(op); grew = True
+        if not grew:
+            return {c: sorted(ops) for c, ops in picked.items()}
+
+def write(out, c, lines):
+    os.makedirs(os.path.dirname(os.path.join(out, c)), exist_ok=True)
+    open(os.path.join(out, c), 'w', encoding='utf-8').write('\n'.join(lines) + '\n')
+
+def only_ours(a, K, B, P, names, changed, added, ck):
+    new = {}
+    for c in added:
+        lines = norm_lines(os.path.join(P, c))
+        new[c] = translate(lines, names, own_class(lines))
+    diffs = {}
+    for c in changed:
+        if c not in ck:
+            continue
+        cls = own_class(norm_lines(os.path.join(K, c)))
+        e = translate(norm_lines(os.path.join(B, c)), names, cls)
+        t = translate(norm_lines(os.path.join(P, c)), names, cls)
+        diffs[c] = (e, t, cls, changes(e, t))
+    picked = pick_ours(diffs, set().union(*[refs_in(l) for l in new.values()]) if new else set())
+    done, manual = [], []
+    for c in sorted(diffs):
+        ops = picked[c]
+        if not ops:
+            continue
+        e, t, cls, _ = diffs[c]
+        r = merge(e, t, norm_lines(os.path.join(K, c)), ops)
+        print('  %s %s: %d of %d changes' % ('carried' if r is not None else 'BY HAND', c[:-6], len(ops), len(diffs[c][3])))
+        for op in ops:
+            add = t[op[3]:op[4]]
+            print('            -%d +%d%s' % (op[2] - op[1], len(add), ' OURS' if any(OURS.search(l) for l in add) else ' (declares what our code uses)'))
+            if a.show_ours:
+                for l in add:
+                    print('              + %s' % l)
+        if r is None:
+            manual.append(c)
+        else:
+            write(a.out, c, r); done.append(c)
+    for c in sorted(new):
+        write(a.out, c, new[c])
+        print('  new     %s' % c[:-6])
+    print('classes carried: %d, by hand: %d, new: %d; every other class is this car\'s stock'
+          % (len(done), len(manual), len(new)))
+    checks(a, K, manual)
+
+def checks(a, K, manual):
+    new_bad = sorted(unresolved(a.out) - unresolved(K))
+    print('references inside the app that do not resolve (new ones): %d' % len(new_bad))
+    for r in new_bad[:40]:
+        print('  %s' % r)
+    if a.fw:
+        fwdir = os.path.join(a.work, 'fw')
+        if not os.path.isdir(fwdir):
+            if not a.baksmali:
+                sys.exit('--fw needs --baksmali')
+            print('deodexing the framework once into %s' % fwdir)
+            for f in sorted(os.listdir(a.fw)):
+                if f.endswith('.odex'):
+                    baksmali(a.baksmali, 'd', '-a', '18', '--allow-odex-opcodes', os.path.join(a.fw, f),
+                             '-o', os.path.join(fwdir, f[:-5]))
+        fw_bad = sorted(unresolved(a.out, defs_of(fwdir)) - unresolved(K, defs_of(fwdir)))
+        print('system calls missing in this framework (new ones): %d' % len(fw_bad))
+        for r in fw_bad[:40]:
+            print('  %s' % r)
+    print('written: %s' % a.out)
+    if manual or new_bad:
+        sys.exit(1)
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     for x in ('work', 'app', 'set', 'out'):
@@ -127,6 +228,10 @@ def main():
     ap.add_argument('--fw')
     ap.add_argument('--baksmali')
     ap.add_argument('--detail', action='store_true', help='list each change of each class (names only)')
+    ap.add_argument('--only-ours', action='store_true',
+                    help='carry only the changes that mention our code (com/ev6, Leafia) and what they need; '
+                         'every other class stays this car\'s stock')
+    ap.add_argument('--show-ours', action='store_true', help='with --only-ours: print the lines those changes add (our code)')
     a = ap.parse_args()
     K = os.path.join(a.work, 'stock_' + a.app)
     B = os.path.join(a.work, '%s_%s.%s' % (a.set, a.app, a.base))
@@ -150,6 +255,9 @@ def main():
     if os.path.isdir(a.out):
         shutil.rmtree(a.out)
     shutil.copytree(K, a.out)
+    if a.only_ours:
+        only_ours(a, K, B, P, names, changed, added, ck)
+        return
     clean, merged, manual, detail = [], [], [], {}
     for c in changed:
         if c not in ck:
@@ -188,29 +296,7 @@ def main():
     for c in added:
         print('  new     %s' % c[:-6])
 
-    bad = unresolved(a.out)
-    base_bad = unresolved(K)
-    new_bad = sorted(bad - base_bad)
-    print('references inside the app that do not resolve (new ones): %d' % len(new_bad))
-    for r in new_bad[:40]:
-        print('  %s' % r)
-    if a.fw:
-        fwdir = os.path.join(a.work, 'fw')
-        if not os.path.isdir(fwdir):
-            if not a.baksmali:
-                sys.exit('--fw needs --baksmali')
-            print('deodexing the framework once into %s' % fwdir)
-            for f in sorted(os.listdir(a.fw)):
-                if f.endswith('.odex'):
-                    baksmali(a.baksmali, 'd', '-a', '18', '--allow-odex-opcodes', os.path.join(a.fw, f),
-                             '-o', os.path.join(fwdir, f[:-5]))
-        fw_bad = sorted(unresolved(a.out, defs_of(fwdir)) - unresolved(K, defs_of(fwdir)))
-        print('system calls missing in this framework (new ones): %d' % len(fw_bad))
-        for r in fw_bad[:40]:
-            print('  %s' % r)
-    print('written: %s' % a.out)
-    if manual or new_bad:
-        sys.exit(1)
+    checks(a, K, manual)
 
 if __name__ == '__main__':
     main()
