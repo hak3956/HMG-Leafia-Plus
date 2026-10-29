@@ -5,7 +5,8 @@ usage: trydelta.py <stock dir> [--out DIR] [--explain]
 
   <stock dir>  the new car's stock files: app/<App>.odex, lib/libautoreceiver_infobank.so
                (a kit's LEAFIA/private/stock/ works as is)
-  --out DIR    also write each result that reproduced its target (keep it private)
+  --out DIR    also write each result that reproduced its target (keep it private);
+               a dex result that missed goes there too as <App>.<stage>.miss.dex
   --explain    for a dex result that missed: how far its body is from the target (the
                target's own adler32 sits in its header), and a search over the bytes in
                which two sets' deltas for the same target disagree
@@ -125,6 +126,9 @@ def main():
             rows.append((s + '/' + f, ('REPRODUCED target %s' % tmd5 if ok else 'different result') + '; ' + how))
             if not ok:
                 missed.append((s + '/' + f, sb, data, tmd5))
+                if a.out and out[:4] == b'dex\n':
+                    os.makedirs(os.path.join(a.out, s), exist_ok=True)
+                    open(os.path.join(a.out, s, f[:-4] + '.miss.dex'), 'wb').write(out)
             if ok:
                 hits.setdefault(f.rsplit('.', 1)[0] if s == 'common' else '.'.join(f.split('.')[:2]), []).append(s)
                 if a.out:
