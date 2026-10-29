@@ -67,6 +67,8 @@ def merge(e, t, k):
     """apply the change e -> t to k; None when a change's context differs on k"""
     if e == k:
         return t
+    if not e:
+        return None
     ek = {}
     for i, j, n in difflib.SequenceMatcher(None, e, k, autojunk=False).get_matching_blocks():
         for x in range(n):
@@ -77,7 +79,7 @@ def merge(e, t, k):
             continue
         lo, hi = max(0, i1 - CTX), min(len(e), i2 + CTX)
         span = [ek.get(x) for x in range(lo, hi)]
-        if None in span or any(b - a != 1 for a, b in zip(span, span[1:])):
+        if not span or None in span or any(b - a != 1 for a, b in zip(span, span[1:])):
             return None
         if i1 == i2:        # pure insertion: after the line before it
             at = ek[i1 - 1] + 1 if i1 > 0 else ek[i1]
