@@ -32,15 +32,15 @@
 
 | 파일 | 국내 EV6 (기록할 값) | 미국 EV6 (ev6) | 한국 아이오닉 5 (neev_kr) | 한국 K5 (dl3hev) | 일치 여부 (나중에 기록) |
 |---|---|---|---|---|---|
-| HKMC_DiPO.apk | | 01446fb79dc4fcfc826271ba18158fa4 | 011ca864de4c659654d4f3b8ae940c35 | ad9859a698f0ac3fbc1093ac21f61dbf | |
-| HKMC_DiPO.odex | | a565e180fdb0b73d6520f28c91cdba63 | 3b26cdcbf3c43f75623311f2bdfc3471 | b6c36634ebf49b45d84798b89cbfbf67 | |
-| HKMC_GPM.apk | | c155b0fb97384e645987dc1bd0f85922 | 5fe8335cf37c21d35a177fe766ca4451 | 4805d9e0cafbbb4f0f622e033d4359c4 | |
-| HKMC_GPM.odex | | 96cd7c27a9db19acb3900f21f57ea9f0 | c38a7fd61f90973625401501215375db | def8588772f648a6acedbed8ecdcd5d8 | |
-| HKMC_Navi_ExSL.apk | | 19559e742b1d21550aa8f0324e8e6d36 | 2d027541d6847696833de77c45614b1a | 278641941999ea3b288ceae97a846f30 | |
-| HKMC_Navi_ExSL.odex | | 9cf41f78ce312b3762b354714d12eec3 | 8d6fa29fb222b1bb75f8fdbc3aab48eb | bd758e94e85dc4e79ba13cd4a7b0f1fe | |
-| Iap2ServerApp.apk | | fde208439f993986a60396e759797a01 | fde208439f993986a60396e759797a01 | fde208439f993986a60396e759797a01 | |
-| Iap2ServerApp.odex | | 03950e4b691f846e5478a5a69818c65e | a672fd0e0070414f2eb70a2807117a6f | 1252fd62faecba96941f2177bf36eb8b | |
-| libautoreceiver_infobank.so | | 48ee793af8b86052503b8c952b034731 | 48ee793af8b86052503b8c952b034731 | 48ee793af8b86052503b8c952b034731 | |
+| HKMC_DiPO.apk | 3573b51da6d4407466594226d9368c2e | 01446fb79dc4fcfc826271ba18158fa4 | 011ca864de4c659654d4f3b8ae940c35 | ad9859a698f0ac3fbc1093ac21f61dbf | 국내 고유, 포팅 필요 |
+| HKMC_DiPO.odex | caf67d3b49d8f8e5cbed4d46062bdf62 | a565e180fdb0b73d6520f28c91cdba63 | 3b26cdcbf3c43f75623311f2bdfc3471 | b6c36634ebf49b45d84798b89cbfbf67 | 국내 고유, 포팅 필요 |
+| HKMC_GPM.apk | 9d7a6b5f74f2fbb56130e7269c9cf5a0 | c155b0fb97384e645987dc1bd0f85922 | 5fe8335cf37c21d35a177fe766ca4451 | 4805d9e0cafbbb4f0f622e033d4359c4 | 국내 고유, 포팅 필요 |
+| HKMC_GPM.odex | c060a43d7a9234acf3319fa05dd263b1 | 96cd7c27a9db19acb3900f21f57ea9f0 | c38a7fd61f90973625401501215375db | def8588772f648a6acedbed8ecdcd5d8 | 국내 고유, 포팅 필요 |
+| HKMC_Navi_ExSL.apk | b813acef42403787ed887c94981b32d4 | 19559e742b1d21550aa8f0324e8e6d36 | 2d027541d6847696833de77c45614b1a | 278641941999ea3b288ceae97a846f30 | 국내 고유, 포팅 필요 |
+| HKMC_Navi_ExSL.odex | 77e3b46f64b0caac5ee9b9946b70ee94 | 9cf41f78ce312b3762b354714d12eec3 | 8d6fa29fb222b1bb75f8fdbc3aab48eb | bd758e94e85dc4e79ba13cd4a7b0f1fe | 국내 고유, 포팅 필요 |
+| Iap2ServerApp.apk | fde208439f993986a60396e759797a01 | fde208439f993986a60396e759797a01 | fde208439f993986a60396e759797a01 | fde208439f993986a60396e759797a01 | 3개 세트와 일치 |
+| Iap2ServerApp.odex | a44a337b979f2af5251d7d30b75fe5e4 | 03950e4b691f846e5478a5a69818c65e | a672fd0e0070414f2eb70a2807117a6f | 1252fd62faecba96941f2177bf36eb8b | 국내 고유, 포팅 필요 |
+| libautoreceiver_infobank.so | c4fbccdf63f7d823f24010afec43c937 | 48ee793af8b86052503b8c952b034731 | 48ee793af8b86052503b8c952b034731 | 48ee793af8b86052503b8c952b034731 | 국내 고유 (기존 공통값과 다름), 확인 필요 |
 
 읽는 방법:
 
@@ -54,6 +54,18 @@
   그 앱에 한해서는 기존 패치를 재사용할 가능성을 검토합니다.
   다만 해시가 같다고 바로 설치하는 것이 아니라,
   manifest의 결과 해시와 설치 단계의 검사까지 통과해야 합니다.
+
+## 1-1. 대조 결과 (2026-10-29 확정)
+
+- 기록 방법: 무선 ADB (`adb shell "nemesis root -c 'md5 ...'"`)로 2026-10-29에 2회 기록.
+  1회차는 Leafia 기본 모드 설치 상태, 2회차는 Leafia 제거 후 순정 복원 상태.
+  12개 값(필수 9개 + CarPlay 3개)이 두 번 모두 동일하게 나왔으므로 순정으로 확정합니다.
+- 일치: Iap2ServerApp.apk만 3개 세트와 모두 일치합니다.
+- 국내 고유: DiPO, GPM, Navi의 APK와 odex, Iap2ServerApp.odex,
+  libautoreceiver_infobank.so는 기존 세트와 모두 다릅니다. 이 파일들은 새로 포팅해야 합니다.
+- CarPlay: Core와 Utils는 V039 네이티브 값과 일치하므로 패치하지 않습니다.
+  Audio는 패치값과 다르며, 별도 네이티브 기준값이 없으므로 관찰값으로만 기록합니다.
+- 수정된 결과 해시와 겹치는 값은 없습니다.
 
 ## 2. 순정이 아닌지 확인하는 값 (수정된 결과 해시)
 
@@ -76,9 +88,9 @@
 
 | 파일 | 국내 EV6 (기록할 값) | 네이티브로 기록된 값 | 패치된 결과 값 (참고) | 판정 (나중에 기록) |
 |---|---|---|---|---|
-| libCarPlayCore.so | | ef49c09b7ab5eb72298f9973443b66b3 (kr-v039-accepts-wifi-natively) | c537d5849f1fa881b0c79333ecfd83e4 | |
-| libCarPlayUtils.so | | e85385d70194efe82cc8a6d0f66f5115 (built-in-aac-opus-converters) | 8bdf0a2a178abf79a2cbda881d5e8264 | |
-| libCarPlayAudio.so | | - (레시피에 네이티브 표시 없음) | 81402f9bb2c74840f953c05d27291b23 | |
+| libCarPlayCore.so | ef49c09b7ab5eb72298f9973443b66b3 | ef49c09b7ab5eb72298f9973443b66b3 (kr-v039-accepts-wifi-natively) | c537d5849f1fa881b0c79333ecfd83e4 | 네이티브와 일치, 패치 불필요 |
+| libCarPlayUtils.so | e85385d70194efe82cc8a6d0f66f5115 | e85385d70194efe82cc8a6d0f66f5115 (built-in-aac-opus-converters) | 8bdf0a2a178abf79a2cbda881d5e8264 | 네이티브와 일치, 패치 불필요 |
+| libCarPlayAudio.so | 2b748bf85652b683abfbc4ce55db3efa | - (레시피에 네이티브 표시 없음) | 81402f9bb2c74840f953c05d27291b23 | 패치값과 다름, 관찰값으로 기록 |
 
 - Core와 Utils가 네이티브 값과 같으면, 그 두 라이브러리는 패치하지 않습니다.
 - 다르면, 패치가 필요한지, 아니면 다른 V039 변형인지 다시 확인합니다.
@@ -93,10 +105,10 @@
 
 ## 5. 해시를 확보한 뒤의 판단
 
-- [ ] 9개 파일 해시가 모두 기록되었는지
-- [ ] 수정된 결과 해시와 겹치는 값이 없는지 (겹치면 순정 복원 후 재기록)
-- [ ] 기존 세트와 일치하는 파일과, 새로 포팅해야 하는 파일이 구분되었는지
-- [ ] Core와 Utils가 네이티브인지 확인되었는지
+- [x] 9개 파일 해시가 모두 기록되었는지
+- [x] 수정된 결과 해시와 겹치는 값이 없는지 (겹치면 순정 복원 후 재기록)
+- [x] 기존 세트와 일치하는 파일과, 새로 포팅해야 하는 파일이 구분되었는지
+- [x] Core와 Utils가 네이티브인지 확인되었는지
 - [ ] 이 결과를 바탕으로 `patches/cvev_kr/stock` 초안을 만들 수 있는지
 - [ ] 다음 단계인 전체 순정 자료와 프레임워크 확보로 넘어갈 수 있는지
 
@@ -112,6 +124,6 @@
 
 ## 상태
 
-- 단계: 1단계 진행 중 (순정 해시 확보 정리 완료, 실제 값 기록 대기 중)
-- 실제 국내 EV6 해시 값: 아직 기록되지 않음
+- 단계: 1단계 완료 (국내 EV6 순정 해시 기록 및 제거 후 재확인 완료)
+- 실제 국내 EV6 해시 값: 2026-10-29 기록 완료, Leafia 제거 전후 동일
 - upstream 공유: 사용자가 완벽하다고 판단할 때까지 보류
