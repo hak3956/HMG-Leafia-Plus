@@ -59,7 +59,12 @@ def main():
     os.makedirs(out, exist_ok=True)
     with tempfile.TemporaryDirectory() as t:
         dex = os.path.join(t, 'dipo.dex')
-        run(JAVA, '-jar', a.smali, 'a', '--api', '18', '-j', '1', '-o', dex, a.dipo_smali)
+        n = len(classes(a.dipo_smali))
+        if not n:
+            sys.exit('no .smali files under %s' % a.dipo_smali)
+        r = run(JAVA, '-jar', a.smali, 'a', '--api', '18', '-j', '1', '-o', dex, a.dipo_smali)
+        if not os.path.exists(dex):
+            sys.exit('smali wrote no dex from %d .smali files:\n%s' % (n, (r.stdout + r.stderr)[-3000:]))
         back = os.path.join(t, 'back')
         run(JAVA, '-jar', a.baksmali, 'd', '-o', back, dex)
         src, got = classes(a.dipo_smali), classes(back)
