@@ -63,8 +63,9 @@ def main():
         if not n:
             sys.exit('no .smali files under %s' % a.dipo_smali)
         r = run(JAVA, '-jar', a.smali, 'a', '--api', '18', '-j', '1', '-o', dex, a.dipo_smali)
-        if not os.path.exists(dex):
-            sys.exit('smali wrote no dex from %d .smali files:\n%s' % (n, (r.stdout + r.stderr)[-3000:]))
+        # smali 2.5.2 reports syntax errors but still exits 0
+        if not os.path.exists(dex) or r.stderr.strip():
+            sys.exit('smali could not assemble the %d .smali files:\n%s' % (n, (r.stdout + r.stderr)[-3000:]))
         back = os.path.join(t, 'back')
         run(JAVA, '-jar', a.baksmali, 'd', '-o', back, dex)
         src, got = classes(a.dipo_smali), classes(back)

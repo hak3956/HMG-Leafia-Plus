@@ -298,7 +298,13 @@ def only_ours(a, K, B, P, names, changed, added, ck):
             write(a.out, c, r); done.append(c)
     for c in sorted(new):
         write(a.out, c, new[c])
-        print('  new     %s' % c[:-6])
+        opened = sum(1 for l in new[c] if l.startswith('.method'))
+        closed = sum(1 for l in new[c] if l == '.end method')
+        if opened != closed or not new[c] or new[c][-1] not in ('.end method', '.end field', '.end annotation') and opened:
+            manual.append(c)
+            print('  BROKEN  %s: cut short in the part build (%d methods, %d complete) - write it by hand' % (c[:-6], opened, closed))
+        else:
+            print('  new     %s' % c[:-6])
     print('classes carried: %d, by hand: %d, new: %d; every other class is this car\'s stock'
           % (len(done), len(manual), len(new)))
     pairs = []
