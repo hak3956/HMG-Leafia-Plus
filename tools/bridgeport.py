@@ -22,7 +22,7 @@ same on this car); new classes are copied. Every reference must resolve.
 
 Prints names and counts only, no code.
 """
-import argparse, collections, difflib, os, shutil, sys
+import argparse, collections, difflib, os, re, shutil, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -90,6 +90,34 @@ def merge(e, t, k):
         res[a:b] = new
     return res
 
+NUM = re.compile(r'-?0x[0-9a-fA-F]+[lLtsS]?|\b-?\d+\b')
+OURS = re.compile(r'Lcom/ev6/|Leafia|leafia|EV6CPWL|ev6')
+
+def hunks(e, t):
+    """one line per change: kind (refs / numbers / code), sizes, names only"""
+    out = []
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, e, t, autojunk=False).get_opcodes():
+        if tag == 'equal':
+            continue
+        old, new = e[i1:i2], t[j1:j2]
+        kind, refs = 'code', []
+        if tag == 'replace' and len(old) == len(new):
+            if all(REF.sub('@', a) == REF.sub('@', b) for a, b in zip(old, new)):
+                kind = 'refs'
+                refs = ['%s -> %s' % (x.group(0), y.group(0)) for a, b in zip(old, new)
+                        for x, y in zip(REF.finditer(a), REF.finditer(b)) if x.group(0) != y.group(0)]
+            elif all(NUM.sub('#', a) == NUM.sub('#', b) for a, b in zip(old, new)):
+                kind = 'numbers'
+            elif all(NUM.sub('#', REF.sub('@', a)) == NUM.sub('#', REF.sub('@', b)) for a, b in zip(old, new)):
+                kind = 'refs+numbers'
+                refs = ['%s -> %s' % (x.group(0), y.group(0)) for a, b in zip(old, new)
+                        for x, y in zip(REF.finditer(a), REF.finditer(b)) if x.group(0) != y.group(0)]
+        if kind == 'code':
+            refs = sorted({m.group(0) for l in new for m in REF.finditer(l)} - {m.group(0) for l in old for m in REF.finditer(l)})
+        ours = ' OURS' if any(OURS.search(l) for l in new) else ''
+        out.append('-%d +%d %s%s%s' % (len(old), len(new), kind, ours, (': ' + '; '.join(refs[:4]) + (' ...' if len(refs) > 4 else '')) if refs else ''))
+    return out
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     for x in ('work', 'app', 'set', 'out'):
@@ -98,6 +126,7 @@ def main():
     ap.add_argument('--part', default='bridge')
     ap.add_argument('--fw')
     ap.add_argument('--baksmali')
+    ap.add_argument('--detail', action='store_true', help='list each change of each class (names only)')
     a = ap.parse_args()
     K = os.path.join(a.work, 'stock_' + a.app)
     B = os.path.join(a.work, '%s_%s.%s' % (a.set, a.app, a.base))
@@ -121,7 +150,7 @@ def main():
     if os.path.isdir(a.out):
         shutil.rmtree(a.out)
     shutil.copytree(K, a.out)
-    clean, merged, manual = [], [], []
+    clean, merged, manual, detail = [], [], [], {}
     for c in changed:
         if c not in ck:
             manual.append((c, 'not in this car\'s stock')); continue
@@ -129,6 +158,7 @@ def main():
         e = translate(norm_lines(os.path.join(B, c)), names, cls)
         t = translate(norm_lines(os.path.join(P, c)), names, cls)
         k = norm_lines(os.path.join(K, c))
+        detail[c] = hunks(e, t)
         r = merge(e, t, k)
         if r is None:
             n = sum(1 for op in difflib.SequenceMatcher(None, e, t, autojunk=False).get_opcodes() if op[0] != 'equal')
@@ -145,12 +175,16 @@ def main():
 
     print('changed classes: %d taken whole (stock same as the base build), %d merged, %d need a person'
           % (len(clean), len(merged), len(manual)))
+    def more(c):
+        if a.detail:
+            for h in detail.get(c, []):
+                print('            %s' % h)
     for c in clean:
-        print('  whole   %s' % c[:-6])
+        print('  whole   %s' % c[:-6]); more(c)
     for c in merged:
-        print('  merged  %s' % c[:-6])
+        print('  merged  %s' % c[:-6]); more(c)
     for c, why in manual:
-        print('  BY HAND %s: %s' % (c[:-6], why))
+        print('  BY HAND %s: %s' % (c[:-6], why)); more(c)
     for c in added:
         print('  new     %s' % c[:-6])
 
