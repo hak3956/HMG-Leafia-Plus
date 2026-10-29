@@ -139,16 +139,26 @@ def merge_ours(e, t, k, ops, tag):
         hunk = t[j1:j2]
         defined = {l[1:] for l in hunk if LABEL.fullmatch(l)}
         names = {d: '%s%d_%s' % (tag, no, d) for d in defined}
+        # a line the change rewrites with only its labels renamed tells which label of
+        # the base build (and so of k) a shifted name stands for
+        was = {}
+        for r in e[i1:i2]:
+            for n in hunk:
+                if r != n and LABEL.sub(':@', REF.sub('@', r)) == LABEL.sub(':@', REF.sub('@', n)):
+                    was.update(zip(label_refs(n), label_refs(r)))
+        def target(lines, at):
+            q = at + 1
+            while q < len(lines) and LABEL.fullmatch(lines[q]):
+                q += 1
+            return q
         for ref in {r for l in hunk for r in label_refs(l)} - defined:
             if ref in made:
                 names[ref] = made[ref]; continue
-            try:
-                q = t.index(':' + ref) + 1
-            except ValueError:
-                return None
-            while q < len(t) and LABEL.fullmatch(t[q]):
-                q += 1
-            kq = ek.get(te.get(q, -1))
+            kq = None
+            if ':' + ref in t:
+                kq = ek.get(te.get(target(t, t.index(':' + ref)), -1))
+            if kq is None and ':' + was.get(ref, '') in e:
+                kq = ek.get(target(e, e.index(':' + was[ref])))
             if kq is None:
                 return None
             back = kq - 1
