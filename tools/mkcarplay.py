@@ -23,6 +23,15 @@ import argparse, hashlib, os, shutil, subprocess, sys, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from port import classes, norm_lines  # noqa: E402
+from bridgeport import LABEL, relabel  # noqa: E402
+
+class AnyLabel(dict):
+    def get(self, k, d=None): return 'L'
+
+def code(path):
+    """a class's lines with label names left out: baksmali names labels after code offsets
+    (and writes one per kind of jump), so only the instructions can be compared"""
+    return [relabel(l, AnyLabel()) for l in norm_lines(path) if not LABEL.fullmatch(l)]
 
 ROOT = os.path.dirname(HERE)
 LPATCH = os.path.join(HERE, 'lpatch', 'lpatch-host')
@@ -69,11 +78,11 @@ def main():
         back = os.path.join(t, 'back')
         run(JAVA, '-jar', a.baksmali, 'd', '-o', back, dex)
         src, got = classes(a.dipo_smali), classes(back)
-        bad = sorted(c for c in src & got if norm_lines(os.path.join(a.dipo_smali, c)) != norm_lines(os.path.join(back, c)))
+        bad = sorted(c for c in src & got if code(os.path.join(a.dipo_smali, c)) != code(os.path.join(back, c)))
         if src != got or bad:
             sys.exit('the DiPO dex does not read back as its smali: %d classes missing, %d extra, %d differ (%s)'
                      % (len(src - got), len(got - src), len(bad), ', '.join(bad[:5])))
-        print('HKMC_DiPO: assembled %d classes, reads back the same; dex md5 %s' % (len(src), md5(dex)))
+        print('HKMC_DiPO: assembled %d classes, reads back with the same instructions; dex md5 %s' % (len(src), md5(dex)))
         for n, d in (('HKMC_DiPO', dex), ('Iap2ServerApp', a.iap2_dex)):
             run(LPATCH, 'zipadd', os.path.join(a.stock, 'app', n + '.apk'), d, os.path.join(out, n + '.apk'))
             print('%s.apk: stock APK + bridge dex, md5 %s' % (n, md5(os.path.join(out, n + '.apk'))))
