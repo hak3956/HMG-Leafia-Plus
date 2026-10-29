@@ -104,7 +104,8 @@ if [ "$MOCK_ANDROID_DOWN" = 1 ]; then
     cp "$X/stub/am" "$X/stub/settings"
     cp "$X/stub/am" "$X/stub/pm"
 fi
-printf '#!/bin/sh\nexec qemu-arm-static %s/pkg/tools/lpatch "$@"\n' "$X" > "$X/stub/lpatch_q"
+# full path: the hooks run with the head unit's PATH, which may not hold qemu's folder
+printf '#!/bin/sh\nexec %s %s/pkg/tools/lpatch "$@"\n' "$(command -v qemu-arm-static)" "$X" > "$X/stub/lpatch_q"
 chmod 755 "$X"/stub/*
 
 # unpack the package and point its scripts at the sandbox instead of the real paths
