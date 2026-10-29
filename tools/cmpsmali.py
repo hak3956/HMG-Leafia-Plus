@@ -20,7 +20,7 @@ car's own code (deodexed against its own framework):
              quickening), not a code difference
   code       anything else: our change to the class, or a real code difference
 
-Only names and counts are printed, no code. Needs java.
+Only names and counts are printed, no code. Needs java (or JAVA=<path to java>).
 """
 import argparse, collections, os, subprocess, sys
 
@@ -29,9 +29,16 @@ sys.path.insert(0, HERE)
 from port import BCP, REF, classes, norm_lines, own_class, tokens  # noqa: E402
 
 SMALI_DIR = os.path.expanduser('~/.local/share/smali')
+JAVA = os.environ.get('JAVA', 'java')
 
 def baksmali(jar, *args):
-    r = subprocess.run(['java', '-jar', jar] + list(args), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if not os.path.exists(jar):
+        sys.exit('no baksmali jar at %s (--baksmali)' % jar)
+    try:
+        r = subprocess.run([JAVA, '-jar', jar] + list(args), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    except FileNotFoundError:
+        sys.exit('java not found: install a Java runtime (Windows: winget install -e --id '
+                 'EclipseAdoptium.Temurin.17.JRE), open a new window, or set JAVA to java\'s full path')
     return r.returncode, r.stderr
 
 def deodex(jar, odex, fw, out):
