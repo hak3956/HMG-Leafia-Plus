@@ -25,14 +25,15 @@ PROP_OFF=f
 FILES=/data/nemesis/build/wireless.carplay.aa/3_bridge
 # ---- car: picked from the firmware's own product id (patches/cars). The
 # expected APKs come from that car's patches/<car>/manifest:
-#   SUM_TBT_*  projection.tbt's build, which must be live before we install
+#   SUM_TBT_*  projection.tbt's build, which must be live before we install; for a
+#              car with no turn-by-turn build (CarPlay mode) the stock APKs instead
 #   SUM_*      this part's bridge build
 # They are saved in the backup folder at install, for uninstall.
 CARS_DIR=../../patches
 . ../../scripts/cars.sh
 VARIANT=$(car_variant) || VARIANT=unknown
-SUM_TBT_DIPO_APK=$(built_sum 2_tbt HKMC_DiPO)
-SUM_TBT_IAP_APK=$(built_sum 2_tbt Iap2ServerApp)
+SUM_TBT_DIPO_APK=$(built_sum 2_tbt HKMC_DiPO || stock_sum HKMC_DiPO.apk)
+SUM_TBT_IAP_APK=$(built_sum 2_tbt Iap2ServerApp || stock_sum Iap2ServerApp.apk)
 SUM_DIPO_APK=$(built_sum 3_bridge HKMC_DiPO)
 SUM_IAP_APK=$(built_sum 3_bridge Iap2ServerApp)
 if [ -z "$SUM_DIPO_APK" ] && [ -s "$BACKUP_DIR/sums" ]; then
@@ -139,13 +140,13 @@ check_sums() {
     sum_is "$FILES/HKMC_DiPO.apk" "$SUM_DIPO_APK" || return 1
     sum_is "$FILES/Iap2ServerApp.apk" "$SUM_IAP_APK" || return 1
     if is_tbt; then
-        log "projection.tbt files are live - ok"
+        log "the build under the bridge is live (projection.tbt's, or stock in CarPlay mode) - ok"
     elif is_applied; then
         log "bridge files are already live"
     else
         log "live HKMC_DiPO.apk md5=$(file_md5 $APP_DIR/HKMC_DiPO.apk)"
         log "live Iap2ServerApp.apk md5=$(file_md5 $APP_DIR/Iap2ServerApp.apk)"
-        log "FAIL: DiPO/Iap2Server are not projection.tbt's build - install projection.tbt first"
+        log "FAIL: DiPO/Iap2Server are not the build the bridge sits on (projection.tbt's, or stock in CarPlay mode)"
         return 1
     fi
     log "checksums ok"
@@ -253,7 +254,7 @@ snapshot_all() {
             log "snapshot exists for $_name apk - keeping original"
         else
             if ! is_tbt_app "$_name"; then
-                log "FAIL: $_live is not projection.tbt's build, refusing to snapshot"
+                log "FAIL: $_live is not the build under the bridge (projection.tbt's, or stock in CarPlay mode), refusing to snapshot"
                 return 1
             fi
             cp -f "$_live" "$_bak_apk" || return 1
@@ -432,7 +433,7 @@ restore_all() {
             sys_ro
             return 1
         fi
-        log "restored $_name apk+odex (projection.tbt build)"
+        log "restored $_name apk+odex (the build under the bridge: projection.tbt's, or stock in CarPlay mode)"
     done
     wipe_dalvik
     sync

@@ -27,6 +27,7 @@ if [ "$MODE" = basic ]; then
     collect_report "basic mode: $MODE_WHY"
 else
     log "car: $(car_name) ($(getprop ro.build.product 2>/dev/null))"
+    [ "$MODE" = carplay ] && log "CarPlay mode: this car's build has no turn-by-turn - installing wireless CarPlay/AA without it"
 fi
 if ! check_legacy; then
     toast "Install failed: uninstall the separate wireless/projection packages first, reboot, then try again."

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Make the per-car patch set for the Wireless CarPlay/AA package.
 
-usage: mkpatches.py <variant> <stock dir> <payload dir> <out patches dir>
+usage: mkpatches.py <variant> <stock dir> <payload dir> <out patches dir> [--carplay-only]
 
   <stock dir>    the car's stock files: app/<name>.apk, app/<name>.odex,
                  lib/libautoreceiver_infobank.so
@@ -10,6 +10,9 @@ usage: mkpatches.py <variant> <stock dir> <payload dir> <out patches dir>
 
 Writes <out>/<variant>/*.lpd, <out>/common/*.lpd and <out>/<variant>/manifest. A car whose
 stock library differs from the one common/ was made from gets <out>/<variant>/libautoreceiver_infobank.tbt.lpd.
+With --carplay-only the set has only the CarPlay bridge (3_bridge: DiPO and Iap2Server
+rebuilt from the stock apps, no turn-by-turn and no library): the package installs it
+in CarPlay mode.
 Each manifest line:  <part> <kind> <name> <patch> <expected md5 of the result>
 The expected md5 of an app is the APK `lpatch zipadd` builds on the head unit
 (stock APK + rebuilt classes.dex), computed here with the host build of lpatch.
@@ -31,15 +34,19 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] in ('-h', '--help'):
         print(__doc__)
         return
-    if len(sys.argv) != 5:
+    args = [x for x in sys.argv[1:] if x != '--carplay-only']
+    carplay = len(args) != len(sys.argv) - 1
+    if len(args) != 4:
         sys.exit(__doc__)
-    var, stock, pay, out = sys.argv[1:5]
+    var, stock, pay, out = args
     fdir = FILES.get(var, 'files_' + var)
     os.makedirs(os.path.join(out, var), exist_ok=True)
     os.makedirs(os.path.join(out, 'common'), exist_ok=True)
     lines = []
     with tempfile.TemporaryDirectory() as t:
         for part, stage, names in PARTS:
+            if carplay and part != '3_bridge':
+                continue
             for n in names:
                 tgt_apk = os.path.join(pay, part, fdir, n + '.apk')
                 dex = os.path.join(t, n + '.dex')
@@ -51,6 +58,10 @@ def main():
                 run(LPATCH, 'delta', os.path.join(out, var, lpd), os.path.join(stock, 'app', n + '.odex'), rebuilt)
                 run(LPATCH, 'zipadd', os.path.join(stock, 'app', n + '.apk'), rebuilt, built)
                 lines.append('%s app %s %s/%s %s' % (part, n, var, lpd, md5(built)))
+        if carplay:
+            open(os.path.join(out, var, 'manifest'), 'w').write('\n'.join(lines) + '\n')
+            print('\n'.join(lines))
+            return
         # the shared delta in common/ serves every car with the same stock library; a car
         # whose library differs gets its own delta beside its app deltas
         lib_new = os.path.join(pay, '2_tbt', fdir, LIB)

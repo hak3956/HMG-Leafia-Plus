@@ -9,6 +9,8 @@ NEMESIS package source. It installs four parts in order, with one reboot at the 
 | CarPlay bridge | `comp/3_bridge` | Projection apps + `libCarPlayCore` via lpatch (`carplay-core-wifi`) |
 | CarPlay audio | `comp/4_audio` | `libCarPlayAudio` / `libCarPlayUtils` via lpatch, plus `libev6aac.so` where needed |
 
+**CarPlay mode:** a car whose patch set has only the bridge build (`3_bridge` lines in its manifest, no `2_tbt`; made with `tools/mkpatches.py --carplay-only`) installs parts 1, 3, 4 and 5: wireless CarPlay and Android Auto without turn-by-turn on the cluster/HUD. The bridge then sits on the stock DiPO and Iap2Server, and its snapshot is the stock files.
+
 Nothing modified is shipped. The head unit patches its own files:
 
 - **Native libraries:** `lpatch` patches them in place from the hash-only recipes in `/recipes`.

@@ -12,8 +12,9 @@
 # Not included: TCP ADB (adb.tcp), the temporary debug logging, and Android Auto
 # car data (projection.cardata, EV-specific) - that installs separately on top of this.
 # Uninstall undoes the parts in reverse order, back to stock.
-# Supported: Kia EV6 (CVEV) and Hyundai Ioniq 5 (NEEV) on 260507 firmware,
-# Kia K5 Hybrid Korea (DL3HEV.KOR) and Hyundai Ioniq 5 Korea (NEEV.KOR) on 260902 firmware.
+# Supported: the cars in patches/cars. A car whose patch set has no turn-by-turn build
+# installs in CarPlay mode (parts 1, 3, 4, 5: the bridge sits on the stock apps); a car
+# with no patch set gets basic mode (part 1 only).
 # Each part also checks the exact stock checksums before writing anything.
 export PATH=/data/nemesis/bin:/sbin:/vendor/bin:/system/sbin:/system/bin:/system/xbin
 LOG=/data/nemesis/wireless.carplay.aa.log
@@ -209,16 +210,44 @@ wifi_hw() {
     fi
 }
 
-# decide_mode: MODE=full or basic (MODE_WHY says why); sets PARTS/PARTS_REV.
+# ---- CarPlay mode: a car whose patch set has only the CarPlay bridge build (no
+# turn-by-turn build) gets wireless CarPlay without turn-by-turn on the cluster/HUD.
+# The bridge then sits on the stock apps instead of the turn-by-turn ones.
+CARPLAY_PARTS="1_projection 3_bridge 4_audio 5_menu"
+CARPLAY_PARTS_REV="5_menu 4_audio 3_bridge 1_projection"
+
+# has_tbt_build: the car's patch set rebuilds the apps for turn-by-turn (part 2)
+has_tbt_build() {
+    local _v _p _k _rest
+    _v=$(car_variant) || return 1
+    [ -s "patches/$_v/manifest" ] || return 1
+    while read -r _p _k _rest; do
+        [ "$_p" = 2_tbt ] && [ "$_k" = app ] && return 0
+    done < "patches/$_v/manifest"
+    return 1
+}
+
+# decide_mode: MODE=full, carplay or basic (MODE_WHY says why); sets PARTS/PARTS_REV.
 # MODE_UPDATE=1 when it's a car we support on firmware other than the one its build
 # is for: we only support each car's newest firmware, so the owner should update.
-# Full mode leaves the rebuilt apps in the build dir for the parts.
+# Full and CarPlay mode leave the rebuilt apps in the build dir for the parts.
 decide_mode() {
     MODE=full
     MODE_WHY=""
     MODE_UPDATE=""
     if ! car_name >/dev/null; then
         MODE_WHY="no build for this car/firmware yet ($(getprop ro.build.product 2>/dev/null))"
+    elif ! has_tbt_build; then
+        MODE=carplay
+        . ./scripts/build.sh
+        if build_payloads; then
+            PARTS=$CARPLAY_PARTS
+            PARTS_REV=$CARPLAY_PARTS_REV
+            return 0
+        fi
+        clean_build
+        MODE_WHY="this firmware's projection apps don't match the build for $(car_name) (only each car's newest firmware is supported: update the head unit's software)"
+        MODE_UPDATE=1
     elif ! check_cluster_api; then
         MODE_WHY="cluster API missing for turn-by-turn"
     else
