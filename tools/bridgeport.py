@@ -183,7 +183,7 @@ def merge_ours(e, t, k, ops, tag):
     return res
 
 NUM = re.compile(r'-?0x[0-9a-fA-F]+[lLtsS]?|\b-?\d+\b')
-OURS = re.compile(r'Lcom/ev6/|Leafia|leafia|EV6CPWL|ev6')
+OURS = re.compile(r'Lcom/ev6/|[Ll]eafia|EV6CPWL|[Ee]v6')
 
 def hunks(e, t):
     """one line per change: kind (refs / numbers / code), sizes, names only"""
@@ -296,8 +296,15 @@ def only_ours(a, K, B, P, names, changed, added, ck):
             manual.append(c)
         else:
             write(a.out, c, r); done.append(c)
+    by_hand = set()
+    if a.replace:
+        for c in sorted(classes(a.replace)):
+            new[c] = open(os.path.join(a.replace, c), encoding='utf-8').read().rstrip('\n').split('\n')
+            by_hand.add(c)
     for c in sorted(new):
         write(a.out, c, new[c])
+        if c in by_hand:
+            print('  ours    %s (written by hand: %s)' % (c[:-6], a.replace)); continue
         opened = sum(1 for l in new[c] if l.startswith('.method'))
         closed = sum(1 for l in new[c] if l == '.end method')
         if opened != closed or not new[c] or new[c][-1] not in ('.end method', '.end field', '.end annotation') and opened:
@@ -395,6 +402,8 @@ def main():
                     help='carry only the changes that mention our code (com/ev6, Leafia) and what they need; '
                          'every other class stays this car\'s stock')
     ap.add_argument('--show-ours', action='store_true', help='with --only-ours: print the lines those changes add (our code)')
+    ap.add_argument('--replace', help='with --only-ours: folder of our own classes (<path>.smali) written by hand '
+                    'for this car; each replaces the class of that name (e.g. tools/cvev_kr)')
     a = ap.parse_args()
     K = os.path.join(a.work, 'stock_' + a.app)
     B = os.path.join(a.work, '%s_%s.%s' % (a.set, a.app, a.base))
