@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compare another car's build, rebuilt from this car's files, with this car's own code.
 
-usage: cmpsmali.py --stock DIR --fw DIR --missed DIR --work DIR [--baksmali JAR]
+usage: cmpsmali.py --stock DIR --fw DIR --missed DIR --work DIR [--baksmali JAR] [--sets SET ...]
 
   --stock   this car's stock files (app/<App>.odex)
   --fw      this car's /system/framework
@@ -51,11 +51,13 @@ def deodex(jar, odex, fw, out):
         sys.exit('deodex of %s failed (exit %d, %d classes skipped):\n%s' % (odex, rc, skipped, err[-2000:]))
 
 def disasm(jar, dex, out):
+    """baksmali stops on a class it can't read but keeps the classes it already wrote:
+    compare those (a result that missed is broken where the two cars' files differ)"""
     rc, err = baksmali(jar, 'd', '-o', out, dex)
     if rc:
-        print('    baksmali could not read %s (exit %d): %s' % (os.path.basename(dex), rc, err.strip()[-500:]))
-        return False
-    return True
+        why = [l.strip() for l in err.splitlines() if l.strip() and not l.strip().startswith('at ')]
+        print('    baksmali stopped on %s (exit %d): %s' % (os.path.basename(dex), rc, ' | '.join(why[-3:])[:400]))
+    return os.path.isdir(out) and bool(classes(out))
 
 def skeleton(line):
     """the line with every member reference blanked (class, name and signature: a wrong
@@ -114,6 +116,7 @@ def main():
         ap.add_argument('--' + x, required=True)
     ap.add_argument('--baksmali', default=os.environ.get('BAKSMALI', os.path.join(SMALI_DIR, 'baksmali-2.5.2.jar')))
     ap.add_argument('--top', type=int, default=25)
+    ap.add_argument('--sets', nargs='*', help='only these patch sets (default: all in --missed)')
     a = ap.parse_args()
     if not os.path.isdir(a.missed):
         sys.exit('no folder %s (run trydelta.py with --out first)' % a.missed)
@@ -121,7 +124,7 @@ def main():
     found = False
     for s in sorted(os.listdir(a.missed)):
         d = os.path.join(a.missed, s)
-        if not os.path.isdir(d):
+        if not os.path.isdir(d) or (a.sets and s not in a.sets):
             continue
         for f in sorted(os.listdir(d)):
             if not f.endswith('.miss.dex'):
@@ -137,7 +140,10 @@ def main():
                 deodex(a.baksmali, odex, a.fw, K)
             O = os.path.join(a.work, '%s_%s' % (s, f[:-len('.miss.dex')]))
             print('%s/%s' % (s, f[:-len('.miss.dex')]))
-            if not os.path.isdir(O) and not disasm(a.baksmali, os.path.join(d, f), O):
+            if not os.path.isdir(O):
+                disasm(a.baksmali, os.path.join(d, f), O)
+            if not os.path.isdir(O) or not classes(O):
+                print('    nothing readable in the result')
                 continue
             compare(K, O, a.top)
     if not found:
