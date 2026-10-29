@@ -34,6 +34,7 @@
 - 연결 시작 때 네이티브 iAP2 라이브러리(`libVer V200710.2`) 가 `iAP2SessionPacketSetParamWithGroup can not find proper pCurrParamList paramId 24` 를 냄. Identification 의 24번은 WirelessCarPlayTransportComponent 로 보임 (iAP2 사양의 번호, 확인 필요). `getWirelessTransportGroup` 은 불렸는데 라이브러리가 그 묶음을 넣지 못했을 수 있음.
 - DiPO: `onIap2Connected ... result = 1`, `getDipoConnectedMode() = 0`, 위치 정보 시작/정지 뒤 **아무것도 없음** (세션, AirPlay, Bonjour 줄 없음). `SplitScreen` 은 `ACTION_CARPLAY_DEVICE_ATTACHED Wireless` 로 받음.
 - 해석 후보: (가) 아이폰이 무선 정보를 받고 유선 세션 대신 Wi-Fi 로 넘어가려 하지만 핫스팟 연결/무선 광고가 안 됨, (나) identification 에 무선 묶음이 빠져 아이폰이 무선 쪽도 시작하지 않고 유선 세션도 열지 않음, (다) 국내 DiPO/네이티브 CarPlay 가 무선 기능이 켜지면 NCM(유선)에서 Bonjour 광고를 하지 않음.
+- 사용자 확인 (같은 시험): 아이폰에 무선 CarPlay 안내가 떴고 수락함, 그래도 무선·유선 CarPlay 모두 안 됨. 무선 Android Auto 는 됨 (프로젝션용 AP 는 동작). 설정의 Wi-Fi 핫스팟 메뉴는 여전히 "기아 커넥트 서비스 확인" (국내 펌웨어가 사용자 핫스팟을 기아 커넥트 가입에 묶는 것으로 보임, CarPlay 와는 별개). 안내가 떴으니 아이폰은 무선 지원을 알아들은 것: (나) 는 가능성이 낮아짐. 첫 로그는 40초만 잘라서 수락 뒤 부분이 빠졌을 수 있음.
 - 가르는 법: 같은 필터로 **유선 CarPlay 가 되는 상태**(순정 또는 평소 쓰는 기본 모드 버전) 의 로그를 받아 `AuthenticationSuccess` 뒤를 비교. 그리고 이번 상태에서 아이폰이 핫스팟에 붙는지 확인.
 
 ## 4. 바로 다음 할 일
