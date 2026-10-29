@@ -134,6 +134,18 @@ for n in HKMC_GPM HKMC_DiPO Iap2ServerApp HKMC_Navi_ExSL; do baksmali x -a 18 -d
 
 네 줄 모두 `끝 0 건너뜀 0` 이면 됩니다. 아니면 `preflight-<앱>.err` 앞부분을 알려 주세요 (순정 코드가 아니라 오류 문구만).
 
+## 5-1. 미국 자료 없이: 다른 차의 델타가 국내 EV6 파일에 맞는지 보기
+
+한국 아이오닉 5(`neev_kr`, 같은 V039·260902)는 v1.0.2 까지 `patches/cars` 에 있었고, 그때 무선 CarPlay 가 실차에서 됐다는 보고가 있습니다 (upstream 이슈 #125, v1.0.3 에서 한국 차가 목록에서 빠진 뒤 안 됨). 미국에서는 아이오닉 5 와 EV6 의 앱 코드가 같았으니, 국내 EV6 와 국내 아이오닉 5 도 같을 수 있습니다.
+
+`.lpd` 에는 결과 파일의 md5 가 들어 있습니다. `tools/trydelta.py` 는 저장소의 모든 델타를 원본 확인 없이 국내 EV6 파일에 적용해 보고, 결과가 그 md5 와 **바이트 단위로 같은지** 알려 줍니다. 같으면 그 차의 빌드(실차에서 검증된 결과물)를 국내 EV6 파일에서 정확히 다시 만들 수 있다는 뜻입니다. 저장소와 순정 파일은 바꾸지 않습니다.
+
+```bash
+cd ~/HMG-Leafia-Plus && ~/leafia-venv/bin/python tools/trydelta.py $K/new-stock --out $K/trydelta
+```
+
+마지막 `reproduced:` 줄과 각 줄의 결과를 알려 주세요 (`--out` 폴더의 파일은 수정 앱 코드이므로 비공개로 둡니다). 6개 앱 델타가 한 세트에서 모두 맞으면 port.py 없이 `cvev_kr` 세트를 만들 수 있습니다. libautoreceiver 는 따로 봅니다.
+
 ## 6. 기준 자료가 오면 돌릴 명령
 
 받은 자료는 `$K/ref-stock/` (`app/`, `lib/`), `$K/ref-fw/framework/`, `$K/ref-builds/` (`2_tbt/files/`, `3_bridge/files/`) 로 둡니다. 먼저 ref-stock 의 해시가 `patches/ev6/stock` 과 같은지 확인합니다. libautoreceiver 를 손으로 만든 뒤:
