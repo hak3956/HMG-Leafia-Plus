@@ -96,6 +96,82 @@ def merge(e, t, k, ops=None):
         res[a:b] = new
     return res
 
+LABEL = re.compile(r':(\w+)')
+REGS = re.compile(r'^\.(registers|locals) ')
+
+def label_refs(line):
+    return [] if line.startswith(('const-string', '.field', '.method', '#')) else LABEL.findall(REF.sub('@', line))
+
+def relabel(line, names):
+    """rename labels in a line, leaving member references (->name:Type) alone"""
+    if not label_refs(line) and not LABEL.fullmatch(line):
+        return line
+    out, at = [], 0
+    for m in REF.finditer(line):
+        out.append(LABEL.sub(lambda g: ':' + names.get(g.group(1), g.group(1)), line[at:m.start()]))
+        out.append(m.group(0)); at = m.end()
+    out.append(LABEL.sub(lambda g: ':' + names.get(g.group(1), g.group(1)), line[at:]))
+    return ''.join(out)
+
+def merge_ours(e, t, k, ops, tag):
+    """merge_ours: apply the given changes of e -> t to k, with their labels made to fit k.
+
+    baksmali names labels after code offsets, so an inserted block shifts every label
+    after it: the part build calls a target :cond_11 that k calls :cond_c. Labels a change
+    defines get names of their own; labels it jumps to outside itself are found in k at
+    the same instruction (a label is added there when k has none). None when a change's
+    context, or a jump target, is not the same on k."""
+    if not e:
+        return None
+    ek, te = {}, {}
+    for i, j, n in difflib.SequenceMatcher(None, e, k, autojunk=False).get_matching_blocks():
+        for x in range(n):
+            ek[i + x] = j + x
+    for i, j, n in difflib.SequenceMatcher(None, t, e, autojunk=False).get_matching_blocks():
+        for x in range(n):
+            te[i + x] = j + x
+    edits, made = [], {}
+    for no, (_, i1, i2, j1, j2) in enumerate(ops):
+        lo, hi = max(0, i1 - CTX), min(len(e), i2 + CTX)
+        span = [ek.get(x) for x in range(lo, hi)]
+        if not span or None in span or any(b - a != 1 for a, b in zip(span, span[1:])):
+            return None
+        hunk = t[j1:j2]
+        defined = {l[1:] for l in hunk if LABEL.fullmatch(l)}
+        names = {d: '%s%d_%s' % (tag, no, d) for d in defined}
+        for ref in {r for l in hunk for r in label_refs(l)} - defined:
+            if ref in made:
+                names[ref] = made[ref]; continue
+            try:
+                q = t.index(':' + ref) + 1
+            except ValueError:
+                return None
+            while q < len(t) and LABEL.fullmatch(t[q]):
+                q += 1
+            kq = ek.get(te.get(q, -1))
+            if kq is None:
+                return None
+            back = kq - 1
+            while back >= 0 and LABEL.fullmatch(k[back]):
+                back -= 1
+            have = k[back + 1:kq]
+            if have:
+                names[ref] = have[0][1:]
+            else:
+                names[ref] = '%sx_%s' % (tag, ref)
+                edits.append((kq, kq, 1, [':' + names[ref]]))
+            made[ref] = names[ref]
+        new = [relabel(l, names) for l in hunk]
+        if i1 == i2:
+            at = ek[i1 - 1] + 1 if i1 > 0 else ek[i1]
+            edits.append((at, at, 0, new))
+        else:
+            edits.append((ek[i1], ek[i2 - 1] + 1, 0, new))
+    res = list(k)
+    for a, b, _, new in sorted(edits, key=lambda x: (x[0], x[2]), reverse=True):
+        res[a:b] = new
+    return res
+
 NUM = re.compile(r'-?0x[0-9a-fA-F]+[lLtsS]?|\b-?\d+\b')
 OURS = re.compile(r'Lcom/ev6/|Leafia|leafia|EV6CPWL|ev6')
 
@@ -151,7 +227,24 @@ def pick_ours(diffs, new_refs):
                 if op not in picked[c] and decls_in(t[op[3]:op[4]], cls) & want:
                     picked[c].append(op); grew = True
         if not grew:
-            return {c: sorted(ops) for c, ops in picked.items()}
+            break
+    # a method our code goes into may need more registers: carry its .registers change
+    for c, (e, t, cls, ops) in diffs.items():
+        starts = set()
+        for op in picked[c]:
+            j = op[3]
+            while j > 0 and not t[j].startswith('.method'):
+                j -= 1
+            starts.add(j)
+        for op in ops:
+            if op in picked[c] or not all(REGS.match(l) for l in e[op[1]:op[2]] + t[op[3]:op[4]]):
+                continue
+            j = op[3]
+            while j > 0 and not t[j].startswith('.method'):
+                j -= 1
+            if j in starts:
+                picked[c].append(op)
+    return {c: sorted(ops) for c, ops in picked.items()}
 
 def write(out, c, lines):
     os.makedirs(os.path.dirname(os.path.join(out, c)), exist_ok=True)
@@ -177,12 +270,16 @@ def only_ours(a, K, B, P, names, changed, added, ck):
         if not ops:
             continue
         e, t, cls, _ = diffs[c]
-        r = merge(e, t, norm_lines(os.path.join(K, c)), ops)
+        r = merge_ours(e, t, norm_lines(os.path.join(K, c)), ops, 'lf')
         print('  %s %s: %d of %d changes' % ('carried' if r is not None else 'BY HAND', c[:-6], len(ops), len(diffs[c][3])))
         for op in ops:
             add = t[op[3]:op[4]]
-            print('            -%d +%d%s' % (op[2] - op[1], len(add), ' OURS' if any(OURS.search(l) for l in add) else ' (declares what our code uses)'))
+            kind = ' OURS' if any(OURS.search(l) for l in add) else (
+                ' (registers)' if all(REGS.match(l) for l in add) else ' (declares what our code uses)')
+            print('            -%d +%d%s' % (op[2] - op[1], len(add), kind))
             if a.show_ours:
+                for l in e[op[1]:op[2]]:
+                    print('              - %s' % l)
                 for l in add:
                     print('              + %s' % l)
         if r is None:
