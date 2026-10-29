@@ -301,7 +301,57 @@ def only_ours(a, K, B, P, names, changed, added, ck):
         print('  new     %s' % c[:-6])
     print('classes carried: %d, by hand: %d, new: %d; every other class is this car\'s stock'
           % (len(done), len(manual), len(new)))
+    pairs = []
+    def pair(raw_lines, lines):
+        for x, y in zip(raw_lines, lines):
+            rx, ry = ['%s->%s%s' % r for r in REF.findall(x)], ['%s->%s%s' % r for r in REF.findall(y)]
+            if len(rx) == len(ry):
+                pairs.extend(zip(rx, ry))
+    for c in new:
+        pair(norm_lines(os.path.join(P, c)), new[c])
+    for c in done:
+        raw = norm_lines(os.path.join(P, c))
+        for op in picked[c]:
+            pair(raw[op[3]:op[4]], diffs[c][1][op[3]:op[4]])
+    check_calls(K, P, pairs)
     checks(a, K, manual)
+
+def body(root, ref):
+    """skeleton of a method's code (references, numbers and labels blanked), or None"""
+    cls, rest = ref.split('->', 1)
+    path = os.path.join(root, cls[1:-1] + '.smali')
+    if not os.path.exists(path) or '(' not in rest:
+        return None
+    lines, out, inside = norm_lines(path), [], False
+    for l in lines:
+        m = METHOD_DECL.match(l)
+        if m and m.group(2) + m.group(3) == rest:
+            inside = True; continue
+        if inside:
+            if l == '.end method':
+                return out
+            out.append(LABEL.sub(':@', NUM.sub('#', REF.sub('@', l))))
+    return None
+
+def check_calls(K, P, pairs):
+    """our code calls this app's methods by names learnt from a broken build: check that
+    the method it meant (in the part build) is the same code as the one it now calls"""
+    seen, same, other = set(), 0, []
+    for raw, ref in pairs:
+        if ref in seen or ref.startswith(('Landroid/', 'Ljava/', 'Lcom/ev6/', 'Ldalvik/', 'Lorg/')) or '(' not in ref:
+            continue
+        seen.add(ref)
+        bk, bp = body(K, ref), body(P, raw)
+        if bk is None:
+            continue
+        if bk == bp:
+            same += 1
+        else:
+            other.append((ref, raw, 'not found in the part build' if bp is None else
+                          '%d of %d lines differ' % (sum(1 for x, y in zip(bk, bp) if x != y) + abs(len(bk) - len(bp)), len(bk))))
+    print('calls from our code into this app: %d same code as in the part build, %d to check' % (same, len(other)))
+    for ref, raw, why in other:
+        print('  CHECK %s%s: %s' % (ref, '' if raw == ref else ' (part build: %s)' % raw.split('->', 1)[1], why))
 
 def checks(a, K, manual):
     new_bad = sorted(unresolved(a.out) - unresolved(K))
