@@ -11,6 +11,12 @@
 #                       0x51: iAP2 bytes for the CarPlay channel       -> Bridge.writeCp
 #                       the bytes are the message's blob item (OBJ_BLOB 0xb; the first
 #                       item is the component number, an int)
+#                       any other: passed on to DiPO's own iAP2 listener, as the Iap2Server
+#                       of US cars does. Korean V039 sends this session's notifications to
+#                       this listener only, so DiPO never got IdentificationAccepted (0) and
+#                       never ran onIap2AuthenticationAccept() -> wireless CarPlay.
+#                       DiPO's listener: DipoService.bC().fH (e/b) .ad (e/a); called through
+#                       its Binder stub (e/g), which holds the bridge's dipoDropNoti check.
 .class final Lcom/ev6/cpwl/TxListener;
 .super Lcom/tcc/iap2/IIap2Listener$Stub;
 .source "TxListener.java"
@@ -33,6 +39,93 @@
     invoke-direct {p0}, Lcom/tcc/iap2/IIap2Listener$Stub;-><init>()V
 
     return-void
+.end method
+
+# DiPO's own iAP2 listener as Iap2Server would call it (its Binder stub), or null.
+# Fields are private and obfuscated (DipoService.fH, e/b.ad): read by reflection.
+.method private static dipo()Lcom/tcc/iap2/IIap2Listener;
+    .registers 4
+
+    const/4 v3, 0x0
+
+    invoke-static {}, Lcom/daudio/app/dipo/service/DipoService;->bC()Lcom/daudio/app/dipo/service/DipoService;
+
+    move-result-object v0
+
+    if-nez v0, :cond_svc
+
+    return-object v3
+
+    :cond_svc
+    invoke-virtual {v0}, Ljava/lang/Object;->getClass()Ljava/lang/Class;
+
+    move-result-object v1
+
+    const-string v2, "fH"
+
+    invoke-virtual {v1, v2}, Ljava/lang/Class;->getDeclaredField(Ljava/lang/String;)Ljava/lang/reflect/Field;
+
+    move-result-object v1
+
+    const/4 v2, 0x1
+
+    invoke-virtual {v1, v2}, Ljava/lang/reflect/Field;->setAccessible(Z)V
+
+    invoke-virtual {v1, v0}, Ljava/lang/reflect/Field;->get(Ljava/lang/Object;)Ljava/lang/Object;
+
+    move-result-object v0
+
+    if-nez v0, :cond_mgr
+
+    return-object v3
+
+    :cond_mgr
+    invoke-virtual {v0}, Ljava/lang/Object;->getClass()Ljava/lang/Class;
+
+    move-result-object v1
+
+    const-string v2, "ad"
+
+    invoke-virtual {v1, v2}, Ljava/lang/Class;->getDeclaredField(Ljava/lang/String;)Ljava/lang/reflect/Field;
+
+    move-result-object v1
+
+    const/4 v2, 0x1
+
+    invoke-virtual {v1, v2}, Ljava/lang/reflect/Field;->setAccessible(Z)V
+
+    invoke-virtual {v1, v0}, Ljava/lang/reflect/Field;->get(Ljava/lang/Object;)Ljava/lang/Object;
+
+    move-result-object v0
+
+    instance-of v1, v0, Lcom/tcc/iap2/IIap2Listener;
+
+    if-nez v1, :cond_lis
+
+    return-object v3
+
+    :cond_lis
+    check-cast v0, Lcom/tcc/iap2/IIap2Listener;
+
+    invoke-interface {v0}, Lcom/tcc/iap2/IIap2Listener;->asBinder()Landroid/os/IBinder;
+
+    move-result-object v1
+
+    if-nez v1, :cond_stub
+
+    return-object v0
+
+    :cond_stub
+    invoke-static {v1}, Lcom/tcc/iap2/IIap2Listener$Stub;->asInterface(Landroid/os/IBinder;)Lcom/tcc/iap2/IIap2Listener;
+
+    move-result-object v1
+
+    if-nez v1, :cond_ret
+
+    return-object v0
+
+    :cond_ret
+    return-object v1
 .end method
 
 # the first non-empty byte array among the message's items, or null
@@ -200,6 +293,53 @@
     const/16 v0, 0x51
 
     if-eq p1, v0, :cond_data
+
+    :try_start_fwd
+    invoke-static {}, Lcom/ev6/cpwl/TxListener;->dipo()Lcom/tcc/iap2/IIap2Listener;
+
+    move-result-object v1
+
+    if-eqz v1, :cond_nodipo
+
+    invoke-interface {v1, p1, p2, p3, p4}, Lcom/tcc/iap2/IIap2Listener;->notify(IIILcom/tcc/iap2/Iap2NotiMsg;)V
+
+    const-string v2, "iAP2 noti "
+
+    const-string v3, " -> DiPO"
+
+    goto :goto_log
+
+    :cond_nodipo
+    const-string v2, "iAP2 noti "
+
+    const-string v3, ": no DiPO listener"
+
+    :goto_log
+    new-instance v4, Ljava/lang/StringBuilder;
+
+    invoke-direct {v4}, Ljava/lang/StringBuilder;-><init>()V
+
+    invoke-virtual {v4, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v4
+
+    invoke-virtual {v4, p1}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+
+    move-result-object v4
+
+    invoke-virtual {v4, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v4
+
+    invoke-virtual {v4}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object v4
+
+    const-string v0, "EV6CPWL"
+
+    invoke-static {v0, v4}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+    :try_end_fwd
+    .catch Ljava/lang/Throwable; {:try_start_fwd .. :try_end_fwd} :catch
 
     :goto_end
     return-void
