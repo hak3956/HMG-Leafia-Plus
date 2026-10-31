@@ -321,7 +321,8 @@ def only_ours(a, K, B, P, names, changed, added, ck):
             if len(rx) == len(ry):
                 pairs.extend(zip(rx, ry))
     for c in new:
-        pair(norm_lines(os.path.join(P, c)), new[c])
+        if os.path.exists(os.path.join(P, c)):  # a class written by hand may be new to the part build too
+            pair(norm_lines(os.path.join(P, c)), new[c])
     for c in done:
         raw = norm_lines(os.path.join(P, c))
         for op in picked[c]:
