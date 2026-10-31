@@ -370,9 +370,9 @@ def check_calls(K, P, pairs):
         print('  CHECK %s%s: %s' % (ref, '' if raw == ref else ' (part build: %s)' % raw.split('->', 1)[1], why))
 
 def read_hook(path):
-    """a .hook file: 'class:' the class, 'after:' one line of it (with {*} for any register
-    list), then 'insert:' and the lines to put right after it; $1 in them is the first
-    register of the matched line. Lines starting with # are comments."""
+    """a .hook file: 'class:' the class, 'after:' (or 'before:') one line of it (with {*} for
+    any register list), then 'insert:' and the lines to put right after (before) it; $1 in
+    them is the first register of the matched line. Lines starting with # are comments."""
     hook, body, cur = {}, [], None
     for l in open(path, encoding='utf-8').read().split('\n'):
         if l.startswith('#') or (cur != 'insert' and not l.strip()):
@@ -382,24 +382,25 @@ def read_hook(path):
                 body.append(l.strip())
             continue
         k, _, v = l.partition(':')
-        if k in ('class', 'after') and v.strip():
+        if k in ('class', 'after', 'before') and v.strip():
             hook[k] = v.strip()
         elif k == 'insert':
             cur = 'insert'
         else:
             sys.exit('%s: unknown line %r' % (path, l))
-    if 'class' not in hook or 'after' not in hook or not body:
-        sys.exit('%s: needs class:, after: and insert:' % path)
-    return hook['class'], hook['after'], body
+    if 'class' not in hook or ('after' in hook) == ('before' in hook) or not body:
+        sys.exit('%s: needs class:, after: or before:, and insert:' % path)
+    where = 'after' if 'after' in hook else 'before'
+    return hook['class'], where, hook[where], body
 
 def apply_hooks(folder, out, manual):
-    """our own hooks (<name>.hook, see read_hook): put after a line of this car's stock
-    class that must occur there exactly once"""
+    """our own hooks (<name>.hook, see read_hook): put after or before a line of this car's
+    stock class that must occur there exactly once"""
     for dp, _, fs in os.walk(folder):
         for f in sorted(fs):
             if not f.endswith('.hook'):
                 continue
-            cls, after, body = read_hook(os.path.join(dp, f))
+            cls, where, after, body = read_hook(os.path.join(dp, f))
             c = cls[1:-1] + '.smali'
             path = os.path.join(out, c)
             if not os.path.exists(path):
@@ -412,9 +413,10 @@ def apply_hooks(folder, out, manual):
             m = pat.match(lines[hits[0]].strip())
             reg = (m.group(1).split(',')[0].strip() if m.groups() else '')
             ins = [l.replace('$1', reg) for l in body]
-            lines[hits[0] + 1:hits[0] + 1] = ins
+            at = hits[0] + (1 if where == 'after' else 0)
+            lines[at:at] = ins
             open(path, 'w', encoding='utf-8').write('\n'.join(lines) + '\n')
-            print('  hooked  %s: %d lines after %s (register %s)' % (cls[1:-1], len(ins), after.split(',')[-1].strip()[:60], reg or '-'))
+            print('  hooked  %s: %d lines %s %s (register %s)' % (cls[1:-1], len(ins), where, after.split(',')[-1].strip()[:60], reg or '-'))
 
 def checks(a, K, manual):
     new_bad = sorted(unresolved(a.out) - unresolved(K))

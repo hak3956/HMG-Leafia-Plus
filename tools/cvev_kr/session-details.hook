@@ -1,0 +1,15 @@
+# Stock DiPO bug, fixed in the other cars' bridge builds but not carried by --only-ours
+# (no ev6/Leafia mark): onSessionDetails (service/q.a(String,String,String,String)) upper-
+# cases the iPhone's iAP2 Bluetooth address (e/b.K()) unchecked. On the Korean EV6 DiPO
+# never handles the Bluetooth iAP2 session itself, so K() is always null and every
+# wireless session crashed DiPO right after "CarPlay session created" (NullPointerException
+# in q.a). Without an address, use the session's own id (p1) as the other builds do, or "".
+# $1 = the register holding K()'s result.
+class: Lcom/daudio/app/dipo/service/q;
+before: invoke-virtual {*}, Ljava/lang/String;->toUpperCase()Ljava/lang/String;
+insert:
+if-nez $1, :lfq_addr
+move-object $1, p1
+if-nez $1, :lfq_addr
+const-string $1, ""
+:lfq_addr
