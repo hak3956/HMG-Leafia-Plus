@@ -41,6 +41,61 @@
     return-void
 .end method
 
+# the first non-empty byte array among the message's items, or null
+.method private static blob(Lcom/tcc/iap2/Iap2NotiMsg;)[B
+    .registers 6
+
+    if-nez p0, :cond_have
+
+    const/4 v4, 0x0
+
+    return-object v4
+
+    :cond_have
+    invoke-virtual {p0}, Lcom/tcc/iap2/Iap2NotiMsg;->getItemGroup()Lcom/tcc/iap2/Iap2NotiMsg$Iap2ObjGroup;
+
+    move-result-object v0
+
+    if-eqz v0, :cond_none
+
+    invoke-virtual {v0}, Lcom/tcc/iap2/Iap2NotiMsg$Iap2ObjGroup;->getItemCnt()I
+
+    move-result v1
+
+    const/4 v2, 0x0
+
+    :goto_loop
+    if-ge v2, v1, :cond_none
+
+    invoke-virtual {v0, v2}, Lcom/tcc/iap2/Iap2NotiMsg$Iap2ObjGroup;->getObjItem(I)Lcom/tcc/iap2/Iap2NotiMsg$Iap2ObjItem;
+
+    move-result-object v3
+
+    if-eqz v3, :cond_next
+
+    invoke-virtual {v3}, Lcom/tcc/iap2/Iap2NotiMsg$Iap2ObjItem;->getItemByteArray()[B
+
+    move-result-object v3
+
+    if-eqz v3, :cond_next
+
+    array-length v4, v3
+
+    if-lez v4, :cond_next
+
+    return-object v3
+
+    :cond_next
+    add-int/lit8 v2, v2, 0x1
+
+    goto :goto_loop
+
+    :cond_none
+    const/4 v4, 0x0
+
+    return-object v4
+.end method
+
 # DiPO's own iAP2 listener as Iap2Server would call it (its Binder stub), or null.
 # Fields are private and obfuscated (DipoService.fH, e/b.ad): read by reflection.
 .method private static dipo()Lcom/tcc/iap2/IIap2Listener;
@@ -126,61 +181,6 @@
 
     :cond_ret
     return-object v1
-.end method
-
-# the first non-empty byte array among the message's items, or null
-.method private static blob(Lcom/tcc/iap2/Iap2NotiMsg;)[B
-    .registers 6
-
-    if-nez p0, :cond_have
-
-    const/4 v4, 0x0
-
-    return-object v4
-
-    :cond_have
-    invoke-virtual {p0}, Lcom/tcc/iap2/Iap2NotiMsg;->getItemGroup()Lcom/tcc/iap2/Iap2NotiMsg$Iap2ObjGroup;
-
-    move-result-object v0
-
-    if-eqz v0, :cond_none
-
-    invoke-virtual {v0}, Lcom/tcc/iap2/Iap2NotiMsg$Iap2ObjGroup;->getItemCnt()I
-
-    move-result v1
-
-    const/4 v2, 0x0
-
-    :goto_loop
-    if-ge v2, v1, :cond_none
-
-    invoke-virtual {v0, v2}, Lcom/tcc/iap2/Iap2NotiMsg$Iap2ObjGroup;->getObjItem(I)Lcom/tcc/iap2/Iap2NotiMsg$Iap2ObjItem;
-
-    move-result-object v3
-
-    if-eqz v3, :cond_next
-
-    invoke-virtual {v3}, Lcom/tcc/iap2/Iap2NotiMsg$Iap2ObjItem;->getItemByteArray()[B
-
-    move-result-object v3
-
-    if-eqz v3, :cond_next
-
-    array-length v4, v3
-
-    if-lez v4, :cond_next
-
-    return-object v3
-
-    :cond_next
-    add-int/lit8 v2, v2, 0x1
-
-    goto :goto_loop
-
-    :cond_none
-    const/4 v4, 0x0
-
-    return-object v4
 .end method
 
 
