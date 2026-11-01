@@ -25,7 +25,12 @@ rm -f "$STAGE/inner/patches/README.md"
 # which source this package was built from; logged at install, read by the Leafia kit
 echo "$(git -C "$ROOT" describe --always --dirty 2>/dev/null || echo unknown) $(date -u +%Y-%m-%d)" > "$STAGE/inner/BUILD"
 mkdir -p "$STAGE/outer/packages"
-(cd "$STAGE/inner" && zip -qrX "$STAGE/outer/packages/wireless.carplay.aa.zip" .)
+# NEMESIS.data first, then every other path in sorted order: the order `zip -r .` takes
+# from the file system changes from build to build (ext4 hashes each new directory), and
+# NEMESIS 1.15 could not show or install a build whose NEMESIS.data came last in the
+# inner zip ("usb prompt result_fail" / timeout before any of our scripts ran)
+(cd "$STAGE/inner" && { echo NEMESIS.data; find . -mindepth 1 | sed 's|^\./||' | grep -vx NEMESIS.data | LC_ALL=C sort; } \
+    | zip -qX "$STAGE/outer/packages/wireless.carplay.aa.zip" -@)
 printf '[nemesis]\nversion=1.0\ntype=install\npath=packages/wireless.carplay.aa.zip\n' > "$STAGE/outer/NEMESIS.data"
 mkdir -p "$(dirname "$OUT")" && rm -f "$OUT"
 (cd "$STAGE/outer" && zip -qrX "$OUT" NEMESIS.data packages)
