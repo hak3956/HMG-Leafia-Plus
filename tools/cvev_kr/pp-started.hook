@@ -1,0 +1,7 @@
+# Leafia CarPlay bridge: tell the phone-projection service when a wireless CarPlay session
+# starts (PpPublish.started). Placed right after the bridge's own session-started hook,
+# which the carried bridge build already has in this method. $1 = the transport register.
+class: Lcom/daudio/app/dipo/telechips/CarPlayService;
+after: invoke-static {*}, Lcom/ev6/cpwl/Bridge;->onCpSessionStarted(I)V
+insert:
+invoke-static {$1}, Lcom/ev6/cpwl/PpPublish;->started(I)V

@@ -1,0 +1,7 @@
+# Leafia CarPlay bridge: tell the phone-projection service when a wireless CarPlay session
+# ends (PpPublish.finalized), right after the bridge's own session-finalized hook.
+# $1 = the transport register.
+class: Lcom/daudio/app/dipo/telechips/CarPlayService;
+after: invoke-static {*}, Lcom/ev6/cpwl/Bridge;->onCpSessionFinalized(I)V
+insert:
+invoke-static {$1}, Lcom/ev6/cpwl/PpPublish;->finalized(I)V
