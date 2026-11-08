@@ -152,7 +152,7 @@
 
     const-string v1, "PP: no iPhone address, wireless connect not submitted"
 
-    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+    invoke-static {v0, v1}, Lcom/ev6/cpwl/Flog;->i(Ljava/lang/String;Ljava/lang/String;)I
 
     goto :cond_end
 
@@ -267,7 +267,7 @@
 
     const-string v1, "PP: no user profile manager, using user 0"
 
-    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+    invoke-static {v0, v1}, Lcom/ev6/cpwl/Flog;->i(Ljava/lang/String;Ljava/lang/String;)I
 
     return v8
 .end method
@@ -290,7 +290,7 @@
 
     const-string v1, "PP: no phoneprojection service"
 
-    invoke-static {v8, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+    invoke-static {v8, v1}, Lcom/ev6/cpwl/Flog;->i(Ljava/lang/String;Ljava/lang/String;)I
 
     return-void
 
@@ -322,7 +322,7 @@
 
     const-string v1, "PP: wireless end submitted"
 
-    invoke-static {v8, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+    invoke-static {v8, v1}, Lcom/ev6/cpwl/Flog;->i(Ljava/lang/String;Ljava/lang/String;)I
 
     return-void
 
@@ -359,13 +359,17 @@
 
     const-string v7, "PP: wireless device record added"
 
-    invoke-static {v8, v7}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+    invoke-static {v8, v7}, Lcom/ev6/cpwl/Flog;->i(Ljava/lang/String;Ljava/lang/String;)I
 
     invoke-interface {v0, v1, v3, v2}, Landroid/phoneprojection/IPPManager;->getWLDeviceInfo(Ljava/lang/String;Ljava/lang/String;I)Landroid/phoneprojection/WLDeviceInfo;
 
     move-result-object v4
 
     if-nez v4, :cond_have
+
+    const-string v7, "PP: record still missing after the add (the phone-projection app never stored it)"
+
+    invoke-static {v8, v7}, Lcom/ev6/cpwl/Flog;->i(Ljava/lang/String;Ljava/lang/String;)I
 
     move-object v4, v6
 
@@ -398,7 +402,7 @@
 
     move-result-object v5
 
-    invoke-static {v8, v5}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+    invoke-static {v8, v5}, Lcom/ev6/cpwl/Flog;->i(Ljava/lang/String;Ljava/lang/String;)I
     :try_end
     .catch Ljava/lang/Throwable; {:try_start .. :try_end} :catch
 
@@ -410,7 +414,7 @@
 
     const-string v1, "PP publish"
 
-    invoke-static {v8, v1, v0}, Landroid/util/Log;->e(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I
+    invoke-static {v8, v1, v0}, Lcom/ev6/cpwl/Flog;->e(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I
 
     goto :goto_done
 .end method

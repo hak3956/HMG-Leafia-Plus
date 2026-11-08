@@ -304,8 +304,11 @@ for _f in $N/logs/* $N/logs/*/*; do
     [ "$_n" != "$_rel" ] && _n="${_n}_${_rel#*/}"
     copy_file "$_f" "$LOGS/nemesis-logs/$_n"
 done
+# the CarPlay bridge's own log file (Korean EV6 build): logcat keeps only about a minute
+copy_file /data/data/com.daudio.app.dipo/leafia-cp.log.1 "$LOGS/leafia-cp.1.txt"
+copy_file /data/data/com.daudio.app.dipo/leafia-cp.log "$LOGS/leafia-cp.txt"
 logcat -d -v time -s TccCarPlay:V CarPlay_:V DiPOManager:V Iap2Server:V iAP2:V GalReceiver:V GPM:V \
-    PhoneProjection:V BTCMStateMachine:I EV6AAC:V AndroidRuntime:V DEBUG:V ActivityManager:W \
+    PhoneProjection:V BTCMStateMachine:I EV6AAC:V EV6CPWL:V AndroidRuntime:V DEBUG:V ActivityManager:W \
     PackageManager:W > "$LOGS/logcat-projection.txt" 2>&1
 logcat -d -v time '*:W' > "$LOGS/logcat-warnings.txt" 2>&1
 # the tags above are best guesses; the full buffers catch whatever they miss

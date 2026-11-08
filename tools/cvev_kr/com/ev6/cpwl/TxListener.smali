@@ -121,7 +121,7 @@
 
     move-result-object v1
 
-    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+    invoke-static {v0, v1}, Lcom/ev6/cpwl/Flog;->i(Ljava/lang/String;Ljava/lang/String;)I
 
     if-ne p1, v3, :cond_1e
 
@@ -165,7 +165,7 @@
 
     move-result-object v1
 
-    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+    invoke-static {v0, v1}, Lcom/ev6/cpwl/Flog;->i(Ljava/lang/String;Ljava/lang/String;)I
 
     const/4 v0, 0x1
 
@@ -189,7 +189,7 @@
 
     const-string v2, "disconnected"
 
-    invoke-static {v1, v2, v0}, Landroid/util/Log;->e(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I
+    invoke-static {v1, v2, v0}, Lcom/ev6/cpwl/Flog;->e(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I
 
     goto :cond_end
 .end method
@@ -238,7 +238,7 @@
 
     const-string v1, "iAP2 identification accepted on Bluetooth: starting the DiPO CarPlay session"
 
-    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+    invoke-static {v0, v1}, Lcom/ev6/cpwl/Flog;->i(Ljava/lang/String;Ljava/lang/String;)I
     :try_end_fwd
     .catch Ljava/lang/Throwable; {:try_start_fwd .. :try_end_fwd} :catch
 
@@ -275,7 +275,7 @@
 
     const-string v2, "notify"
 
-    invoke-static {v1, v2, v0}, Landroid/util/Log;->e(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I
+    invoke-static {v1, v2, v0}, Lcom/ev6/cpwl/Flog;->e(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I
 
     goto :goto_end
 .end method

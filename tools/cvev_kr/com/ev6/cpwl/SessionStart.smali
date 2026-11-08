@@ -90,7 +90,7 @@
 
     move-result-object v2
 
-    invoke-static {v1, v2, v0}, Landroid/util/Log;->e(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I
+    invoke-static {v1, v2, v0}, Lcom/ev6/cpwl/Flog;->e(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I
 
     goto :goto_end
 .end method
@@ -119,7 +119,7 @@
 
     const-string v2, "DiPO: createDipo + updateInitAppState done"
 
-    invoke-static {v1, v2}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+    invoke-static {v1, v2}, Lcom/ev6/cpwl/Flog;->i(Ljava/lang/String;Ljava/lang/String;)I
 
     invoke-virtual {v0}, Ljava/lang/Object;->getClass()Ljava/lang/Class;
 
@@ -207,7 +207,7 @@
 
     const-string v1, "DiPO: onTransportIdentifier for the Bluetooth session done"
 
-    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+    invoke-static {v0, v1}, Lcom/ev6/cpwl/Flog;->i(Ljava/lang/String;Ljava/lang/String;)I
     :try_end
     .catch Ljava/lang/Throwable; {:try_start .. :try_end} :catch
 
@@ -219,7 +219,7 @@
 
     const-string v1, "DiPO: not ready, CarPlay session not started"
 
-    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+    invoke-static {v0, v1}, Lcom/ev6/cpwl/Flog;->i(Ljava/lang/String;Ljava/lang/String;)I
 
     goto :goto_end
 
@@ -230,7 +230,7 @@
 
     const-string v2, "DiPO: onTransportIdentifier"
 
-    invoke-static {v1, v2, v0}, Landroid/util/Log;->e(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I
+    invoke-static {v1, v2, v0}, Lcom/ev6/cpwl/Flog;->e(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I
 
     goto :goto_end
 .end method
