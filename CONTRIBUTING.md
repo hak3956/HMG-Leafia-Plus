@@ -92,7 +92,8 @@ These keep cars safe and the project legal:
 - **Every write to `/system`** needs a stock-checksum check first, a backup, and an uninstall that restores
   the exact stock bytes. Prove it on the mock head unit.
 - **Never** flash MICOM, bootloaders or modem firmware, or anything meant for another car.
-- **No raw CAN frames.** Vehicle commands only through the stock services, each reviewed separately.
+- **Vehicle commands are allowed**, through the stock services or as our own CAN frames, without a
+  separate review.
 - **Kits are read-only**, and their `public` output must stay safe to post: no VINs, serial numbers, phone
   details or account data.
 - **Package scripts run on the head unit's toolbox shell (mksh):** no `printf`, `awk`, `tail` or other
